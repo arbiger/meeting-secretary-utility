@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meeting Secretary</title>
+  <style>
+    body { font-family: system-ui; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .btn { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    .recording { background: #ff4444; color: white; }
+    .meeting { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 8px; }
+    .meeting h3 { margin: 0 0 5px; }
+    .meeting .meta { color: #666; font-size: 0.9em; }
+    .cluster { display: inline-block; background: #e0e0e0; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 0.8em; }
+    #status { margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+    audio { width: 100%; margin: 10px 0; }
+    textarea { width: 100%; height: 200px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>🎙️ Meeting Secretary</h1>
+
+  <div id="status">Ready</div>
+
+  <div>
+    <button class="btn recording" onclick="startRecording()">🔴 錄音</button>
+    <button class="btn" onclick="stopRecording()" disabled id="stopBtn">⏹️ 停止</button>
+    <button class="btn" onclick="uploadFile()" id="uploadBtn" disabled>⬆️ 上傳檔案</button>
+  </div>
+
+  <input type="file" id="fileInput" accept=".m4a,.mp3,.wav" style="margin: 10px 0;">
+
+  <h2>📋 會議列表</h2>
+  <div id="meetings">載入中...</div>
+
+  <h2>📄 詳情</h2>
+  <div id="detail" style="display:none;">
+    <h3 id="detailTitle"></h3>
+    <div id="detailMeta" class="meta"></div>
+    <div id="detailClusters"></div>
+    <audio id="detailAudio" controls style="display:none;"></audio>
+    <textarea id="detailSummary" readonly></textarea>
+  </div>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let currentMeetingId = null;
+
+    async function startRecording() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.start();
+      document.getElementById('status').textContent = '🔴 錄音中...';
+      document.getElementById('stopBtn').disabled = false;
+    }
+
+    function stopRecording() {
+      mediaRecorder.stop();
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: 'audio/m4a' });
+        const file = new File([blob], 'recording.m4a');
+        uploadFile(file);
+      };
+      document.getElementById('status').textContent = '處理中...';
+      document.getElementById('stopBtn').disabled = true;
+    }
+
+    async function uploadFile(file) {
+      file = file || document.getElementById('fileInput').files[0];
+      if (!file) { alert('請選擇檔案'); return; }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      document.getElementById('status').textContent = '上傳中...';
+      try {
+        const res = await fetch('/api/recordings/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        currentMeetingId = data.meeting_id;
+        document.getElementById('status').textContent = '上傳成功，分析中...';
+        pollStatus(currentMeetingId);
+      } catch (e) {
+        document.getElementById('status').textContent = '錯誤: ' + e.message;
+      }
+    }
+
+    async function pollStatus(id) {
+      const interval = setInterval(async () => {
+        const res = await fetch('/api/meetings/' + id);
+        const data = await res.json();
+        if (data.status === 'completed') {
+          document.getElementById('status').textContent = '完成！';
+          loadMeetings();
+          showDetail(id);
+          clearInterval(interval);
+        } else if (data.status === 'failed') {
+          document.getElementById('status').textContent = '分析失敗';
+          clearInterval(interval);
+        }
+      }, 2000);
+    }
+
+    async function loadMeetings() {
+      const res = await fetch('/api/meetings');
+      const meetings = await res.json();
+      const div = document.getElementById('meetings');
+      if (meetings.length === 0) {
+        div.innerHTML = '<p>暫無會議紀錄</p>';
+        return;
+      }
+      div.innerHTML = meetings.map(m => `
+        <div class="meeting" onclick="showDetail('${m.id}')">
+          <h3>${m.title}</h3>
+          <div class="meta">${m.date} ${m.time} | ${m.status}</div>
+          <div>${(m.clusters||[]).map(c => '<span class="cluster">'+c+'</span>').join('')}</div>
+        </div>
+      `).join('');
+    }
+
+    async function showDetail(id) {
+      const res = await fetch('/api/meetings/' + id);
+      const m = await res.json();
+      document.getElementById('detail').style.display = 'block';
+      document.getElementById('detailTitle').textContent = m.title;
+      document.getElementById('detailMeta').textContent = m.date + ' ' + m.time;
+      document.getElementById('detailClusters').innerHTML = (m.clusters||[]).map(c => '<span class="cluster">'+c+'</span>').join('');
+      document.getElementById('detailSummary').value = m.summary_content || '載入中...';
+      if (m.recording_path) {
+        document.getElementById('detailAudio').style.display = 'block';
+        document.getElementById('detailAudio').src = '/api/recordings/' + id + '/download';
+      }
+    }
+
+    loadMeetings();
+  </script>
+</body>
+</html>
