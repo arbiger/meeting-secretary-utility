@@ -8,7 +8,8 @@
     body { font-family: system-ui; max-width: 800px; margin: 0 auto; padding: 20px; }
     .btn { padding: 10px 20px; margin: 5px; cursor: pointer; }
     .recording { background: #ff4444; color: white; }
-    .meeting { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 8px; }
+    .meeting { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 8px; cursor: pointer; }
+    .meeting:hover { background: #f9f9f9; }
     .meeting h3 { margin: 0 0 5px; }
     .meeting .meta { color: #666; font-size: 0.9em; }
     .cluster { display: inline-block; background: #e0e0e0; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 0.8em; }
@@ -28,7 +29,7 @@
     <button class="btn" onclick="uploadFile()" id="uploadBtn">⬆️ 上傳檔案</button>
   </div>
 
-  <input type="file" id="fileInput" accept=".m4a,.mp3,.wav" style="margin: 10px 0;" onchange="fileSelected()">
+  <input type="file" id="fileInput" accept=".m4a,.mp3,.wav" style="margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; max-width: 400px;">
 
   <h2>📋 會議列表</h2>
   <div id="meetings">載入中...</div>
@@ -63,6 +64,10 @@
     }
 
     function stopRecording() {
+      if (!mediaRecorder) {
+        document.getElementById('status').textContent = '錄音未開始';
+        return;
+      }
       mediaRecorder.stop();
       mediaRecorder.onstop = () => {
         const blob = new Blob(audioChunks, { type: 'audio/m4a' });
@@ -74,10 +79,7 @@
     }
 
     function fileSelected() {
-      const fileInput = document.getElementById('fileInput');
-      if (fileInput.files.length > 0) {
-        document.getElementById('uploadBtn').disabled = false;
-      }
+      console.log('File selected:', document.getElementById('fileInput').files.length);
     }
 
     async function uploadFile(file) {
