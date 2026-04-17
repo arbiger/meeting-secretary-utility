@@ -11,23 +11,25 @@ class AnalyzerService:
         self.llm_url = settings.llm_url
         self.llm_model = settings.llm_model
 
-    def _build_prompt(self, transcript: str) -> str:
-        return f"""You are an expert executive secretary. I will provide you with a meeting transcript.
-Please perform the following tasks:
-1. Identify participants based on context.
-2. Provide a concise summary of discussions and decisions.
-3. Extract TODOs with assignees.
-4. Suggest 1 to 3 "Cluster Tags" for categorization (e.g., Marketing, Backend, Design).
-5. Provide a short descriptive title.
+def _build_prompt(self, transcript: str) -> str:
+        return f"""你是一位專業的行政助理。我會提供你一段會議錄音逐字稿。
+請執行以下任務：
+1. 根據內容識別與會者身份。
+2. 提供簡潔的討論摘要和決議。
+3. 擷取待辦事項及其負責人。
+4. 建議 1 到 3 個「分類標籤」用於分類（例如：行銷、後端、設計）。
+5. 提供一個簡短描述性標題。
 
-Transcript:
+請用「繁體中文」回覆所有內容（包括標題、摘要、待辦事項等）。
+
+逐字稿：
 {transcript}
 
-Return the result as a JSON object:
+請回傳 JSON 格式：
 {{
     "title": "...",
     "clusters": ["..."],
-    "markdown_content": "# ...\\n\\n..."
+    "markdown_content": "# ...\n\n..."
 }}
 """
 
