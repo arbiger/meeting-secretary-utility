@@ -46,6 +46,12 @@ Return the result as a JSON object:
             )
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
+            content = content.strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+                content = content.strip()
             data = json.loads(content)
             return AnalysisResult(
                 title=data.get("title", "Untitled"),
@@ -53,6 +59,9 @@ Return the result as a JSON object:
                 markdown_content=data.get("markdown_content", ""),
             )
         except Exception as e:
+            import traceback
+
+            traceback.print_exc()
             return AnalysisResult(
                 title="Analysis Failed",
                 clusters=["Unanalyzed"],
