@@ -53,10 +53,12 @@ Return the result as a JSON object:
                     content = content[4:]
                 content = content.strip()
             data = json.loads(content)
+            markdown = data.get("markdown_content", "")
+            markdown_with_transcript = f"{markdown}\n\n---\n\n## 原始錄音文字 (Full Transcript)\n\n{transcript}"
             return AnalysisResult(
                 title=data.get("title", "Untitled"),
                 clusters=data.get("clusters", []),
-                markdown_content=data.get("markdown_content", ""),
+                markdown_content=markdown_with_transcript,
             )
         except Exception as e:
             import traceback
