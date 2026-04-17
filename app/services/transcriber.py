@@ -54,9 +54,17 @@ class TranscriberService:
             response = requests.post(self.asr_url, files=files, data=data, timeout=600)
             response.raise_for_status()
             result = response.json()
-            if isinstance(result, list):
-                return self._format_vibevoice_output(result)
-            return result.get("text", "")
+            text = result.get("text", "")
+            if isinstance(text, str):
+                import json
+
+                try:
+                    segments = json.loads(text)
+                    if isinstance(segments, list):
+                        return self._format_vibevoice_output(segments)
+                except:
+                    pass
+            return str(text)
 
     def _format_vibevoice_output(self, segments: list) -> str:
         """Format VibeVoice-ASR output with speaker labels."""
