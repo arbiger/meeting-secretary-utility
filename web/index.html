@@ -23,6 +23,10 @@
 
   <div id="status">Ready</div>
 
+  <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; font-size: 0.9em;">
+    💡 錄音功能需要在瀏覽器授予麥克風權限。建議使用 localhost 或 HTTPS 訪問。
+  </div>
+
   <div>
     <button class="btn recording" onclick="startRecording()">🔴 錄音</button>
     <button class="btn" onclick="stopRecording()" disabled id="stopBtn">⏹️ 停止</button>
@@ -56,10 +60,16 @@
         audioChunks = [];
         mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
         mediaRecorder.start();
-        document.getElementById('status').textContent = '🔴 錄音中...';
+        document.getElementById('status').textContent = '🔴 錄音中... (再按停止結束)';
         document.getElementById('stopBtn').disabled = false;
       } catch (e) {
-        document.getElementById('status').textContent = '錄音錯誤: ' + e.message;
+        let msg = '錄音錯誤: ' + e.message;
+        if (e.name === 'NotAllowedError') {
+          msg = '請允許瀏覽器使用麥克風權限';
+        } else if (e.name === 'NotFoundError') {
+          msg = '找不到麥克風設備';
+        }
+        document.getElementById('status').textContent = msg;
       }
     }
 
@@ -104,19 +114,34 @@
       }
     }
 
-    async function pollStatus(id) {
+async function pollStatus(id) {
+      let attempts = 0;
+      const maxAttempts = 60;
       const interval = setInterval(async () => {
-        const res = await fetch('/api/meetings/' + id);
-        const data = await res.json();
-        if (data.status === 'completed') {
-          document.getElementById('status').textContent = '完成！';
-          loadMeetings();
-          showDetail(id);
-          clearInterval(interval);
-        } else if (data.status === 'failed') {
-          document.getElementById('status').textContent = '分析失敗';
+        attempts++;
+        try {
+          const res = await fetch('/api/meetings/' + id);
+          const data = await res.json();
+          if (data.status === 'completed') {
+            document.getElementById('status').textContent = '✅ 完成！';
+            loadMeetings();
+            showDetail(id);
+            clearInterval(interval);
+          } else if (data.status === 'failed') {
+            document.getElementById('status').textContent = '❌ 分析失敗';
+            clearInterval(interval);
+          } else if (attempts >= maxAttempts) {
+            document.getElementById('status').textContent = '⏱️ 分析超時';
+            clearInterval(interval);
+          } else {
+            document.getElementById('status').textContent = `🔄 分析中... (${attempts * 2}秒)`;
+          }
+        } catch (e) {
+          document.getElementById('status').textContent = '輪詢錯誤: ' + e.message;
           clearInterval(interval);
         }
+      }, 2000);
+    }
       }, 2000);
     }
 
