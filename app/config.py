@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     asr_model: str = "Qwen3-ASR-1.7B-8bit"
     llm_model: str = "SuperGemma4-31b-abliterated-mlx-4bit"
     meetings_dir: Path = Path.home() / "Documents" / "Meetings"
-    port: int = 8080
+    port: int = 6076
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

@@ -30,8 +30,8 @@ python -m app.main
 
 ## 使用
 
-- Web UI: http://localhost:8080
-- API: http://localhost:8080/api/meetings
+- Web UI: http://localhost:6076
+- API: http://localhost:6076/api/meetings
 
 ## MCP
 
