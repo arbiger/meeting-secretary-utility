@@ -41,7 +41,6 @@ Return the result as a JSON object:
                     "model": self.llm_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.1,
-                    "response_format": {"type": "json_object"},
                 },
                 timeout=300,
             )
