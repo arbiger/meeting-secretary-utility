@@ -25,10 +25,10 @@
   <div>
     <button class="btn recording" onclick="startRecording()">🔴 錄音</button>
     <button class="btn" onclick="stopRecording()" disabled id="stopBtn">⏹️ 停止</button>
-    <button class="btn" onclick="uploadFile()" id="uploadBtn" disabled>⬆️ 上傳檔案</button>
+    <button class="btn" onclick="uploadFile()" id="uploadBtn">⬆️ 上傳檔案</button>
   </div>
 
-  <input type="file" id="fileInput" accept=".m4a,.mp3,.wav" style="margin: 10px 0;">
+  <input type="file" id="fileInput" accept=".m4a,.mp3,.wav" style="margin: 10px 0;" onchange="fileSelected()">
 
   <h2>📋 會議列表</h2>
   <div id="meetings">載入中...</div>
@@ -48,13 +48,18 @@
     let currentMeetingId = null;
 
     async function startRecording() {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-      mediaRecorder.start();
-      document.getElementById('status').textContent = '🔴 錄音中...';
-      document.getElementById('stopBtn').disabled = false;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.start();
+        document.getElementById('status').textContent = '🔴 錄音中...';
+        document.getElementById('stopBtn').disabled = false;
+      } catch (e) {
+        document.getElementById('status').textContent = '錄音錯誤: ' + e.message;
+      }
     }
 
     function stopRecording() {
@@ -68,8 +73,18 @@
       document.getElementById('stopBtn').disabled = true;
     }
 
+    function fileSelected() {
+      const fileInput = document.getElementById('fileInput');
+      if (fileInput.files.length > 0) {
+        document.getElementById('uploadBtn').disabled = false;
+      }
+    }
+
     async function uploadFile(file) {
-      file = file || document.getElementById('fileInput').files[0];
+      if (!file) {
+        const fileInput = document.getElementById('fileInput');
+        file = fileInput.files[0];
+      }
       if (!file) { alert('請選擇檔案'); return; }
 
       const formData = new FormData();
