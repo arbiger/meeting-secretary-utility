@@ -44,18 +44,36 @@ class TranscriberService:
             return []
 
     def transcribe(self, audio_path: Path) -> str:
-        """Transcribe audio file via mlx_audio."""
+        """Transcribe audio file via VibeVoice-ASR."""
         with open(audio_path, "rb") as f:
             files = {"file": ("chunk.wav", f, "audio/wav")}
             data = {
                 "model": self.asr_model,
                 "language": "zh",
-                "response_format": "json",
-                "stream": "False",
             }
             response = requests.post(self.asr_url, files=files, data=data, timeout=600)
             response.raise_for_status()
-            return response.json().get("text", "")
+            result = response.json()
+            if isinstance(result, list):
+                return self._format_vibevoice_output(result)
+            return result.get("text", "")
+
+    def _format_vibevoice_output(self, segments: list) -> str:
+        """Format VibeVoice-ASR output with speaker labels."""
+        lines = []
+        for seg in segments:
+            speaker = seg.get("Speaker", 0)
+            content = seg.get("Content", "")
+            start = seg.get("Start", 0)
+            end = seg.get("End", 0)
+            if (
+                content
+                and not content.startswith("[")
+                and content != "[Noise]"
+                and content != "[Environmental Sounds]"
+            ):
+                lines.append(f"[{start:.1f}-{end:.1f}] Speaker {speaker}: {content}")
+        return "\n".join(lines)
 
     def transcribe_chunks(self, chunks: List[Path]) -> str:
         """Transcribe multiple chunks and concatenate results."""
