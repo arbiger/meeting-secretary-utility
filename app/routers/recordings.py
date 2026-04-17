@@ -1,9 +1,9 @@
 # app/routers/recordings.py
 import os
 import uuid
-import asyncio
+import threading
 from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from pathlib import Path
 
 from app.storage.manager import StorageManager
@@ -16,52 +16,7 @@ def get_storage() -> StorageManager:
     return StorageManager(settings.meetings_dir)
 
 
-@router.post("/upload")
-async def upload_recording(file: UploadFile = File(...)):
-    """
-    Upload audio file. Returns meeting_id for tracking.
-    Automatically triggers AI analysis after upload.
-    """
-    storage = get_storage()
-    storage.init_dirs()
-
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
-
-    ext = Path(file.filename).suffix.lower()
-    if ext not in [".m4a", ".mp3", ".wav", ".m4a"]:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
-
-    meeting_id = f"{datetime.now().strftime('%Y-%m-%d_%H%M')}_{uuid.uuid4().hex[:8]}"
-    recording_path = storage.recordings_dir / f"{meeting_id}{ext}"
-
-    with open(recording_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-
-    meeting = {
-        "id": meeting_id,
-        "title": f"Recording_{meeting_id}",
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "time": datetime.now().strftime("%H:%M"),
-        "clusters": [],
-        "recording_path": str(recording_path),
-        "summary_path": "",
-        "status": "pending",
-        "created_at": datetime.now(),
-    }
-    storage.save_meeting(meeting)
-
-    asyncio.create_task(run_analysis(meeting_id))
-
-    return {
-        "meeting_id": meeting_id,
-        "status": "pending",
-        "recording_path": str(recording_path),
-    }
-
-
-async def run_analysis(meeting_id: str):
+def run_analysis(meeting_id: str):
     """Background task to run AI analysis."""
     from app.services.transcriber import TranscriberService
     from app.services.analyzer import AnalyzerService
@@ -118,6 +73,57 @@ async def run_analysis(meeting_id: str):
         storage.update_meeting(meeting_id, {"status": "failed"})
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@router.post("/upload")
+async def upload_recording(
+    file: UploadFile = File(...), background_tasks: BackgroundTasks = None
+):
+    """
+    Upload audio file. Returns meeting_id for tracking.
+    Automatically triggers AI analysis after upload.
+    """
+    storage = get_storage()
+    storage.init_dirs()
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in [".m4a", ".mp3", ".wav", ".m4a"]:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+    meeting_id = f"{datetime.now().strftime('%Y-%m-%d_%H%M')}_{uuid.uuid4().hex[:8]}"
+    recording_path = storage.recordings_dir / f"{meeting_id}{ext}"
+
+    with open(recording_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    meeting = {
+        "id": meeting_id,
+        "title": f"Recording_{meeting_id}",
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "time": datetime.now().strftime("%H:%M"),
+        "clusters": [],
+        "recording_path": str(recording_path),
+        "summary_path": "",
+        "status": "pending",
+        "created_at": datetime.now(),
+    }
+    storage.save_meeting(meeting)
+
+    if background_tasks:
+        background_tasks.add_task(run_analysis, meeting_id)
+    else:
+        thread = threading.Thread(target=run_analysis, args=(meeting_id,))
+        thread.start()
+
+    return {
+        "meeting_id": meeting_id,
+        "status": "pending",
+        "recording_path": str(recording_path),
+    }
 
 
 @router.get("/{meeting_id}/download")
