@@ -7,7 +7,6 @@
   <style>
     body { font-family: system-ui; max-width: 800px; margin: 0 auto; padding: 20px; }
     .btn { padding: 10px 20px; margin: 5px; cursor: pointer; }
-    .recording { background: #ff4444; color: white; }
     .meeting { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 8px; cursor: pointer; }
     .meeting:hover { background: #f9f9f9; }
     .meeting h3 { margin: 0 0 5px; }
@@ -27,9 +26,7 @@
     <button class="btn" onclick="document.getElementById('fileInput').click()">📤 上傳音頻檔案</button>
   </div>
 
-  <input type="file" id="fileInput" accept=".m4a,.mp3,.wav,audio/*" style="display: none;" onchange="handleFileSelect(event)"></input>
-
-  <h2>📋 會議列表</h2>
+  <input type="file" id="fileInput" accept=".m4a,.mp3,.wav,audio/*" style="display: none;" onchange="handleFileSelect(event)">
 
   <h2>📋 會議列表</h2>
   <div id="meetings">載入中...</div>
@@ -44,25 +41,7 @@
   </div>
 
   <script>
-let currentMeetingId = null;
-        document.getElementById('status').textContent = msg;
-      }
-    }
-
-    function stopRecording() {
-      if (!mediaRecorder) {
-        document.getElementById('status').textContent = '錄音未開始';
-        return;
-      }
-      mediaRecorder.stop();
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: 'audio/m4a' });
-        const file = new File([blob], 'recording.m4a');
-        uploadFile(file);
-      };
-      document.getElementById('status').textContent = '處理中...';
-      document.getElementById('stopBtn').disabled = true;
-    }
+    let currentMeetingId = null;
 
     async function handleFileSelect(event) {
       const file = event.target.files[0];
@@ -87,7 +66,7 @@ let currentMeetingId = null;
       }
     }
 
-async function pollStatus(id) {
+    async function pollStatus(id) {
       let attempts = 0;
       const maxAttempts = 60;
       const interval = setInterval(async () => {
@@ -115,24 +94,27 @@ async function pollStatus(id) {
         }
       }, 2000);
     }
-      }, 2000);
-    }
 
     async function loadMeetings() {
-      const res = await fetch('/api/meetings');
-      const meetings = await res.json();
       const div = document.getElementById('meetings');
-      if (meetings.length === 0) {
-        div.innerHTML = '<p>暫無會議紀錄</p>';
-        return;
+      div.innerHTML = '<p>載入中...</p>';
+      try {
+        const res = await fetch('/api/meetings');
+        const meetings = await res.json();
+        if (meetings.length === 0) {
+          div.innerHTML = '<p>暫無會議紀錄</p>';
+          return;
+        }
+        div.innerHTML = meetings.map(m => `
+          <div class="meeting" onclick="showDetail('${m.id}')">
+            <h3>${m.title}</h3>
+            <div class="meta">${m.date} ${m.time} | ${m.status}</div>
+            <div>${(m.clusters||[]).map(c => '<span class="cluster">'+c+'</span>').join('')}</div>
+          </div>
+        `).join('');
+      } catch (e) {
+        div.innerHTML = '<p>載入失敗</p>';
       }
-      div.innerHTML = meetings.map(m => `
-        <div class="meeting" onclick="showDetail('${m.id}')">
-          <h3>${m.title}</h3>
-          <div class="meta">${m.date} ${m.time} | ${m.status}</div>
-          <div>${(m.clusters||[]).map(c => '<span class="cluster">'+c+'</span>').join('')}</div>
-        </div>
-      `).join('');
     }
 
     async function showDetail(id) {
