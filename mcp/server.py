@@ -8,7 +8,7 @@ from datetime import datetime
 try:
     from mcp.server.fastmcp import FastMCP
 
-    FASTAPI_URL = "http://127.0.0.1:8080"
+    FASTAPI_URL = "http://127.0.0.1:6076"
 
     mcp = FastMCP("Meeting Secretary MCP")
 
