@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meeting Taker Flow"
+  short_description: "Operate the local Meeting Secretary MCP workflow safely."
+  default_prompt: "Use the local meeting-taker flow to health-check the service, process meeting audio, and consume transcript/extraction outputs without writing downstream systems from the MCP."
