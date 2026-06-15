@@ -17,7 +17,7 @@ Operate George's local meeting transcription/extraction workflow. Keep the MCP b
 
 ## Paths And Services
 
-- Repo: `/Users/george/Documents/Georges/01 🎯 Projects/meeting-taker-mcp` or a clone of `arbiger/meeting-secretary-utility`
+- Repo: `<local meeting-secretary-utility repo>` or a clone of `arbiger/meeting-secretary-utility`
 - Default meetings directory: `~/Documents/Meetings`
 - Recordings: `~/Documents/Meetings/recordings`
 - Summaries: `~/Documents/Meetings/summaries`
@@ -25,7 +25,7 @@ Operate George's local meeting transcription/extraction workflow. Keep the MCP b
 - Local model endpoint: `http://127.0.0.1:8000/v1`
 - FastAPI service: `http://127.0.0.1:6076`
 - MCP server entrypoint: `mcp/server.py`
-- Optional downstream TaskPad repo: `/Users/george/Documents/Georges/01 🎯 Projects/agentic-taskpad`
+- Optional downstream TaskPad repo: `<local agentic-taskpad repo>`
 
 ## Health Check First
 
@@ -68,7 +68,7 @@ Example MCP call shape:
 
 ```json
 {
-  "filePath": "/Users/george/Documents/Meetings/Inbox/FILE.m4a"
+  "filePath": "~/Documents/Meetings/Inbox/FILE.m4a"
 }
 ```
 
